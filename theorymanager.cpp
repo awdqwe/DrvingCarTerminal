@@ -7,8 +7,8 @@
 #include <QCoreApplication>
 
 TheoryManager::TheoryManager(QObject *parent) : QObject(parent) {
-    m_currentIndex = 0;
-    m_score = 0;
+    t_currentIndex = 0;
+    t_score = 0;
 }
 
 // 加载外部 JSON 题库
@@ -31,60 +31,77 @@ bool TheoryManager::loadQuestions(const QString &fileName) {
         return false;
     }
 
-    m_questions = doc.array();
-    m_currentIndex = 0;
-    m_score = 0;
+    t_questions = doc.array();
+    t_currentIndex = 0;
+    t_score = 0;
+    t_answerRecords = QJsonArray();
 
     emit questionChanged();
-    qDebug() << "成功加载题目数量:" << m_questions.size();
+    qDebug() << "成功加载题目数量:" << t_questions.size();
     return true;
 }
-
 // 返回当前题目文本
 QString TheoryManager::currentQuestion() const {
-    if (m_currentIndex < m_questions.size()) {
-        return m_questions[m_currentIndex].toObject().value("question").toString();
+    if (t_currentIndex < t_questions.size()) {
+        return t_questions[t_currentIndex].toObject().value("question").toString();
     }
     return "答题结束";
 }
-
 // 返回当前选项列表 (QVariantList 方便 QML 直接用作 Model)
 QVariantList TheoryManager::currentOptions() const {
     QVariantList options;
-    if (m_currentIndex < m_questions.size()) {
-        QJsonArray arr = m_questions[m_currentIndex].toObject().value("options").toArray();
+    if (t_currentIndex < t_questions.size()) {
+        QJsonArray arr = t_questions[t_currentIndex].toObject().value("options").toArray();
         for (const QJsonValue &val : arr) {
             options << val.toString();
         }
     }
     return options;
 }
-
 // 提交答案并逻辑跳转
 bool TheoryManager::submitAnswer(int optionIndex) {
-    if (m_currentIndex >= m_questions.size()) return false;
+    if (t_currentIndex >= t_questions.size()) return false;
 
     // 获取正确答案索引 (JSON 里的 answer 字段，通常设为 0-3)
-    int correctAnswer = m_questions[m_currentIndex].toObject().value("answer").toInt();
+    int correctAnswer = t_questions[t_currentIndex].toObject().value("answer").toInt();
+
+    // 记录逻辑
+    QJsonObject record;
+    record["question"] = t_questions[t_currentIndex].toObject().value("question").toString();
+    record["selected"] = optionIndex;
+    record["correct"] = correctAnswer;
+    record["isCorrect"] = (optionIndex == correctAnswer);
+
+    t_answerRecords.append(record);
 
     if (optionIndex == correctAnswer) {
-        m_score++;
+        t_score++;
     }
 
     // 移动到下一题
-    m_currentIndex++;
+    t_currentIndex ++;
 
-    if (m_currentIndex >= m_questions.size()) {
-        emit quizFinished(m_score); // 触发结束信号
+    if (t_currentIndex >= t_questions.size()) {
+        emit quizFinished(t_score); // 触发结束信号
     } else {
         emit questionChanged(); // 触发 UI 更新
     }
 
     return (optionIndex == correctAnswer);
 }
-
+// 重置答题状态
 void TheoryManager::reset() {
-    m_currentIndex = 0;
-    m_score = 0;
+    t_currentIndex = 0;
+    t_score = 0;
+    t_answerRecords = QJsonArray();
     emit questionChanged();
+}
+// 生成答题结果 JSON
+QJsonObject TheoryManager::getResult() const {
+    QJsonObject obj;
+    obj["type"] = "theory";
+    obj["cardId"] = t_currentCard;
+    obj["score"] = t_score;
+    obj["total"] = (int)t_questions.size();
+    return obj;
 }

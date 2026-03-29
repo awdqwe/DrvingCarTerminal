@@ -26,23 +26,28 @@ public:
     Q_INVOKABLE bool submitAnswer(int optionIndex);
     // 3 重置答题状态
     Q_INVOKABLE void reset();
-    // 4 发送卡号给答题管理器
-    // Q_INVOKABLE void setStudentCard(const QString &cardId) { m_currentCard = cardId; }
+    // 4 导出结果
+    Q_INVOKABLE QJsonObject getResult() const;
+    // 5 设置当前卡号
+    Q_INVOKABLE void setCurrentCard(const QString &cardId) { t_currentCard = cardId; }
 
     QString currentQuestion() const;
     QVariantList currentOptions() const;
-    int currentIndex() const { return m_currentIndex; }
-    int totalQuestions() const { return m_questions.size(); }
+    int currentIndex() const { return t_currentIndex; }
+    int totalQuestions() const { return t_questions.size(); }
+    
 
 signals:
     void questionChanged(); // 切换题目
     void quizFinished(int score); // 答题结束
 
 private:
-    QJsonArray m_questions;
-    int m_currentIndex = 0;
-    int m_score = 0;
-    // QString m_currentCard;
+    QJsonArray t_questions;
+    int t_currentIndex = 0;
+    int t_score = 0;
+    // 答题记录缓存
+    QJsonArray t_answerRecords;
+    QString t_currentCard; // 缓存卡号
 };
 
 #endif // THEORYMANAGER_H
