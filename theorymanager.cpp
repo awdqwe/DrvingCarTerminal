@@ -13,6 +13,9 @@ TheoryManager::TheoryManager(QObject *parent) : QObject(parent) {
 
 // 加载外部 JSON 题库
 bool TheoryManager::loadQuestions(const QString &fileName) {
+    if(fileName.contains("1")) t_subject = "科目一";
+    else if(fileName.contains("4")) t_subject = "科目四";
+
     // 默认在程序运行同级目录下寻找文件
     QString filePath = QCoreApplication::applicationDirPath() + "/" + fileName;
     
@@ -37,7 +40,6 @@ bool TheoryManager::loadQuestions(const QString &fileName) {
     t_answerRecords = QJsonArray();
 
     emit questionChanged();
-    qDebug() << "成功加载题目数量:" << t_questions.size();
     return true;
 }
 // 返回当前题目文本
@@ -100,8 +102,9 @@ void TheoryManager::reset() {
 QJsonObject TheoryManager::getResult() const {
     QJsonObject obj;
     obj["type"] = "theory";
-    obj["cardId"] = t_currentCard;
+    obj["CardId"] = t_currentCard;
     obj["score"] = t_score;
     obj["total"] = (int)t_questions.size();
+    obj["subject"] = t_subject;
     return obj;
 }

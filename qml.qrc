@@ -1,6 +1,9 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
-        <file>questions.json</file>
+        <file>SubjectOverlay.qml</file>
+        <file>questions_1.json</file>
+        <file>questions_4.json</file>
+        <file>sign_pedestrian.png</file>
     </qresource>
 </RCC>

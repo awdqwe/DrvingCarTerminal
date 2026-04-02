@@ -83,6 +83,19 @@ void RfidThread::run() {
         QString actionStr;
         int duration = 0;
 
+            // 如果当前处于发卡注册模式或 QML 覆盖层（选择科目）活跃，则不要改变会话状态
+            if (r_issueMode) {
+                // 将刷卡事件通知上层用于发卡处理，但不占用会话卡位
+                emit cardScanned(cardId, QStringLiteral("issue"), 0);
+                sleep(2);
+                continue;
+            }
+            if (r_overlayActive) {
+                // 覆盖层期间忽略刷卡
+                sleep(2);
+                continue;
+            }
+
         {
             QMutexLocker locker(&r_sessionMutex);
             if (r_currentStudentCard.isEmpty()) {
@@ -109,6 +122,18 @@ void RfidThread::invalidatePendingSession(){
     QMutexLocker locker(&r_sessionMutex);
     r_currentStudentCard.clear();
     r_sessionStartTime = 0;
+}
+
+void RfidThread::setIssueMode(bool enable){
+    // 进入发卡模式时清空会话，离开时不自动恢复
+    if (enable) invalidatePendingSession();
+    r_issueMode = enable;
+}
+
+void RfidThread::setOverlayMode(bool active){
+    // 进入 overlay 时清空会话并忽略后续刷卡
+    if (active) invalidatePendingSession();
+    r_overlayActive = active;
 }
 
 void RfidThread::sendJson(const QString &json){

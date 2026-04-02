@@ -19,7 +19,7 @@ Window {
     property int sessionSeconds: 0  // 练车秒数
     property string lastDuration: "00:00:00"
     property string currentStudent: "等待刷卡"  // 练车秒数
-    // 练车中刷错卡显示 illegal 后，警告结束需回到 TRAINING，勿与空闲「请刷卡上车」混淆
+    // 练车中刷错卡显示 illegal 后，警告结束需回到 TRAINING
     property bool resumeTrainingAfterWarning: false
     // 进入「识别中」前是否在练车（含连续刷卡时仍处于 RECOGNIZING 的情况）
     property bool pendingResumeTraining: false
@@ -240,7 +240,7 @@ Window {
             color: "transparent"
             border.width: (uiState === "TRAINING" || uiState === "RECOGNIZING") ? 8 : 4
             border.color: {
-                if(uiState==="IDLE") return "#30363D"
+                if(uiState==="IDLE"|| uiState==="WAITING_SCAN") return "#30363D"
                 if(uiState==="TRAINING") return "#58A6FF"
                 if(uiState==="RECOGNIZING") return "#D29922"
                 if(uiState==="RESULT") return "#3FB950"
@@ -272,7 +272,7 @@ Window {
             // 学员姓名
             Label {
                 text: {
-                    if(uiState === "IDLE") return "请刷卡上车"
+                    if(uiState === "IDLE"|| uiState === "WAITING_SCAN") return "请刷卡上车"
                     if(uiState === "RECOGNIZING") return "识别中…"
                     if(uiState === "TRAINING") return "当前学员: " + currentStudent
                     if(uiState === "RESULT") return currentStudent + ",已完成练习"
@@ -316,7 +316,7 @@ Window {
             Label {
                 id: welcomeMsg
                 text: {
-                    if(uiState === "IDLE") return "将 IC 卡靠近感应区，支持断网离线打卡"
+                    if(uiState === "IDLE" || uiState === "WAITING_SCAN") return "将 IC 卡靠近感应区，支持断网离线打卡"
                     if(uiState === "RECOGNIZING") return "已读取卡片，正在与服务器验证…"
                     if(uiState === "TRAINING") return "正在记录您的学时..."
                     if(uiState === "RESULT") return "练车结束，本次有效练习时长:\n" + lastDuration
@@ -344,15 +344,23 @@ Window {
         contentItem: Text { text: "练习题"; color: "#ffffff"; font.pixelSize: 18; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
         onClicked: {
             theoryEngine.reset()
-            var ok = theoryEngine.loadQuestions("questions.json")
+            var file = ""
+            if (backend.currentSubject === "科目一")
+                file = "questions_1.json"
+            else if (backend.currentSubject === "科目四")
+                file = "questions_4.json"
+            // else
+            //     file = "questions_1.json"
+
+            var ok = theoryEngine.loadQuestions(file)
             if (theoryEngine.totalQuestions === 0) {
                 if (!ok) {
                     welcomeMsg.text = "无法加载题库，请检查题库文件"
                     return
                 }
             }
-            quizDialog.visible = true
-        }
+                quizDialog.visible = true
+            }
     }
 
     // 4 底部状态栏
@@ -477,6 +485,22 @@ Window {
                     }
                 }
             }
+        }
+    }
+
+    // 使用 Overlay
+    SubjectOverlay {
+        id: subjectOverlay
+        visible: uiState === "IDLE"   // 空闲时显示
+        onVisibleChanged: backend.setOverlayMode(visible)
+        onSubjectSelected: {
+            backend.setCurrentSubject(subject)
+            if (subject === "科目一")
+                theoryEngine.loadQuestions("questions_1.json")
+            else if (subject === "科目四")
+                theoryEngine.loadQuestions("questions_4.json")
+            // 切换状态，显示原有的“等待刷卡”界面
+            uiState = "WAITING_SCAN"
         }
     }
 }

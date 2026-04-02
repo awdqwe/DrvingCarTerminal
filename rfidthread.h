@@ -9,7 +9,7 @@
 
 class DeviceBackend;
 
-// 硬件子线程类：专门负责死循环刷卡和网络通信
+// 硬件子线程类：专门负责循环刷卡和网络通信
 class RfidThread : public QThread {
     Q_OBJECT
 public:
@@ -35,10 +35,14 @@ private:
     QMutex r_sessionMutex; // 会话锁
     QString r_currentStudentCard; // 当前学生卡号
     qint64 r_sessionStartTime = 0; // 会话开始时间
+    bool r_issueMode = false; // 发卡注册模式
+    bool r_overlayActive = false; // 选择科目 overlay 活跃时忽略刷卡
 
 public slots:
     void sendJson(const QString &json);
     void invalidatePendingSession(); // 失效当前的会话
+    void setIssueMode(bool enable);
+    void setOverlayMode(bool active);
 };
 
 #endif // RFIDTHREAD_H

@@ -12,9 +12,15 @@ class DeviceBackend : public QObject{
     Q_PROPERTY(QString deviceId READ deviceId CONSTANT);
 public:
     explicit DeviceBackend(QObject *parent = nullptr);
-    Q_INVOKABLE void startHardwareThread();
+    Q_INVOKABLE void startHardwareThread(); // QML 启动线程
+    Q_INVOKABLE void setIssueMode(bool enable); // QML 切换到发卡注册界面
+    Q_INVOKABLE void setOverlayMode(bool active); // QML 通知覆盖层（选择科目）状态
+    Q_INVOKABLE void sendAppointment(QString dateStr); // 预约发送
+
+    Q_INVOKABLE void setCurrentSubject(QString sub) { d_currentSubject = sub; } // QML 切换科目
+    Q_INVOKABLE QString currentSubject() { return d_currentSubject; } // QML 获取当前科目
     Q_INVOKABLE void uploadTheoryResult(const QJsonObject &result); // 上传分数
-    Q_INVOKABLE void setIssueMode(bool enable);
+    
 
     // 工具函数 读设备 ID
     QString deviceId() const { return d_deviceId; }
@@ -28,6 +34,7 @@ signals:
     void cacheCountChanged(int count);
     void sendToServer(const QString &json);
     void issueModeChanged(bool enabled); // QML 切换到注册界面
+    void overlayModeChanged(bool active);
     void invalidCardDetected();          // QML 强制停止计时并弹窗告警
 
 private slots:
@@ -35,6 +42,7 @@ private slots:
     void onServerAckReceived(const QString &jsonReply);
     void onCacheSizeChanged(int size);
     void onCardScanned(const QString cardId, const QString action, int duration);
+    void sendHeartbeat(); // 定时发送心跳包
 
 private:
     RfidThread *m_rfidThread;
@@ -42,10 +50,12 @@ private:
     QString d_lastCardId;
     QString d_lastScanAction; // 最近一发刷卡动作，用于 invalid 时判断是否回滚底层会话
     QString d_currentStudentName;
-    
+    QString d_currentSubject = "";
+
     // 发卡注册模式
     bool d_issueMode = false;
-    
+    bool d_overlayMode = false;
+
 };
 
 #endif // DEVICEBACKEND_H

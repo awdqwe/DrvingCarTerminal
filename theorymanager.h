@@ -48,6 +48,7 @@ private:
     // 答题记录缓存
     QJsonArray t_answerRecords;
     QString t_currentCard; // 缓存卡号
+    QString t_subject = "科目二"; // 默认科目
 };
 
 #endif // THEORYMANAGER_H
