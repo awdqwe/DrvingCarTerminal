@@ -98,13 +98,39 @@ void TheoryManager::reset() {
     t_answerRecords = QJsonArray();
     emit questionChanged();
 }
+// 仅翻到下一题（不记录答案），用于背题模式
+void TheoryManager::nextQuestion(){
+    if (t_currentIndex < t_questions.size()) {
+        t_currentIndex++;
+        if (t_currentIndex >= t_questions.size()) {
+            // 到达末尾，仅触发 UI 更新（背题模式不应当触发 quizFinished 上传）
+            emit questionChanged();
+        } else {
+            emit questionChanged();
+        }
+    }
+}
+// 返回上一题
+void TheoryManager::prevQuestion(){
+    if (t_currentIndex > 0) {
+        t_currentIndex--;
+        emit questionChanged();
+    }
+}
+// 返回当前题的正确答案索引
+int TheoryManager::currentCorrect() const {
+    if (t_currentIndex < t_questions.size()) {
+        return t_questions[t_currentIndex].toObject().value("answer").toInt();
+    }
+    return -1;
+}
 // 生成答题结果 JSON
 QJsonObject TheoryManager::getResult() const {
     QJsonObject obj;
     obj["type"] = "theory";
-    obj["CardId"] = t_currentCard;
+    obj["CardID"] = t_currentCard;
     obj["score"] = t_score;
     obj["total"] = (int)t_questions.size();
-    obj["subject"] = t_subject;
+    obj["Subject"] = t_subject;
     return obj;
 }

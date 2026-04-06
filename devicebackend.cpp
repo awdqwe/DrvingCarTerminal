@@ -58,6 +58,14 @@ void DeviceBackend::setOverlayMode(bool active){
     emit overlayModeChanged(active);
 }
 
+// QML 设置当前科目并通知（供 UI 绑定）
+void DeviceBackend::setCurrentSubject(QString sub){
+    if (d_currentSubject != sub) {
+        d_currentSubject = sub;
+        emit currentSubjectChanged(d_currentSubject);
+    }
+}
+
 // 获取CPUID
 QString DeviceBackend::getCpuId(){
     QFile file("/proc/cpuinfo");

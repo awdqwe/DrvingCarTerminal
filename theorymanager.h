@@ -13,6 +13,7 @@ class TheoryManager: public QObject {
     // 将题目信息暴露给 QML 
     Q_PROPERTY(QString currentQuestion READ currentQuestion NOTIFY questionChanged)
     Q_PROPERTY(QVariantList currentOptions READ currentOptions NOTIFY questionChanged)
+    Q_PROPERTY(int currentCorrect READ currentCorrect NOTIFY questionChanged)
     Q_PROPERTY(int currentIndex READ currentIndex NOTIFY questionChanged)
     Q_PROPERTY(int totalQuestions READ totalQuestions NOTIFY questionChanged)
 
@@ -28,8 +29,12 @@ public:
     Q_INVOKABLE void reset();
     // 4 导出结果
     Q_INVOKABLE QJsonObject getResult() const;
+    Q_INVOKABLE void nextQuestion();
+    Q_INVOKABLE void prevQuestion();
     // 5 设置当前卡号
     Q_INVOKABLE void setCurrentCard(const QString &cardId) { t_currentCard = cardId; }
+
+    Q_INVOKABLE int currentCorrect() const;
 
     QString currentQuestion() const;
     QVariantList currentOptions() const;

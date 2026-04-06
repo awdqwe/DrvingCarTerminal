@@ -128,4 +128,28 @@ sudo ./GUI_CLIENT_G  # 或生成的可执行文件名
 ---
 
 如需把 `server_ip` 与 `port` 改为配置文件或命令行参数，可以继续实现并更新构建说明。
-    
+
+
+
+GUI_CLIENT
+C:.
+│  devicebackend.cpp
+│  devicebackend.h
+│  main.cpp
+│  main.qml
+│  MFRC522.cpp
+│  MFRC522.h
+│  qml.qrc
+│  questions_1.json
+│  questions_4.json
+│  README.md
+│  rfidthread.cpp
+│  rfidthread.h
+│  sign_pedestrian.png
+│  SubjectOverlay.qml
+│  terminal.pro
+│  theorymanager.cpp
+│  theorymanager.h
+└─.vscode
+        settings.json
+        sftp.json

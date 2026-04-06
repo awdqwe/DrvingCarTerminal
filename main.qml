@@ -29,6 +29,7 @@ Window {
     property string _pendName: ""
     property string _pendAction: ""
     property int _pendDuration: 0
+    property bool quizShowAnswers: false
 
     readonly property int recognizingMinMs: 900 // 约 1 秒内展示「识别中区」以降低卡顿感
 
@@ -38,6 +39,14 @@ Window {
         var m = Math.floor((sec % 3600) / 60);
         var s = sec % 60;
         return (h < 10 ? "0" + h : h) + ":" + (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+    }
+
+    // 默认预约时期
+    function defaultAppointmentDateTime() {
+        var d = new Date()
+        d.setDate(d.getDate() + 1)
+        d.setHours(9, 0, 0, 0)
+        return Qt.formatDateTime(d, "yyyy-MM-dd HH:mm")
     }
 
     function applyShowCardInfo(cardId, name, action, duration) {
@@ -221,6 +230,13 @@ Window {
                 font.family: "Monospace"
                 color: "#8B949E"
             }
+            Button {
+                text: "更改科目"
+                visible: uiState === "WAITING_SCAN"
+                background: Rectangle { color: "#30363D"; radius: 6 }
+                contentItem: Text { text: parent.text; color: "#FFFFFF" }
+                onClicked: uiState = "IDLE"
+            }
         }
     }
 
@@ -331,36 +347,88 @@ Window {
         }
     }
 
-    // 打开练习题按钮（仅练车中可见）
+    // 科目一/四：练车中打开理论练习题 或 背题模式
+    Column {
+        anchors.right: parent.right
+        anchors.bottom: bottomBar.top
+        anchors.margins: 20
+        spacing: 12
+
+        Button {
+            width: 180
+            height: 50
+            visible: uiState === "TRAINING" && (backend.currentSubject === "科目一" || backend.currentSubject === "科目四")
+            background: Rectangle { color: "#0366D6"; radius: 8 }
+            contentItem: Text { text: "练习题"; color: "#ffffff"; font.pixelSize: 18; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            onClicked: {
+                quizShowAnswers = false
+                theoryEngine.reset()
+                var file = ""
+                if (backend.currentSubject === "科目一")
+                    file = "questions_1.json"
+                else if (backend.currentSubject === "科目四")
+                    file = "questions_4.json"
+
+                var ok = theoryEngine.loadQuestions(file)
+                if (theoryEngine.totalQuestions === 0) {
+                    if (!ok) {
+                        welcomeMsg.text = "无法加载题库，请检查题库文件"
+                        return
+                    }
+                }
+                quizDialog.visible = true
+            }
+        }
+
+        Button {
+            width: 180
+            height: 50
+            visible: uiState === "TRAINING" && (backend.currentSubject === "科目一" || backend.currentSubject === "科目四")
+            background: Rectangle { color: "#8B5CF6"; radius: 8 }
+            contentItem: Text { text: "背题"; color: "#ffffff"; font.pixelSize: 18; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            onClicked: {
+                quizShowAnswers = true
+                theoryEngine.reset()
+                var file = ""
+                if (backend.currentSubject === "科目一")
+                    file = "questions_1.json"
+                else if (backend.currentSubject === "科目四")
+                    file = "questions_4.json"
+
+                var ok = theoryEngine.loadQuestions(file)
+                if (theoryEngine.totalQuestions === 0) {
+                    if (!ok) {
+                        welcomeMsg.text = "无法加载题库，请检查题库文件"
+                        return
+                    }
+                }
+                quizDialog.visible = true
+            }
+        }
+    }
+
+    // 科目二/三：练车中预约瑕疵练习时间（不发理论题）
     Button {
         anchors.right: parent.right
         anchors.bottom: bottomBar.top
         anchors.margins: 20
-        width: 140
+        width: 220
         height: 50
-        x: parent.width - 170
-        visible: uiState === "TRAINING"
-        background: Rectangle { color: "#0366D6"; radius: 8 }
-        contentItem: Text { text: "练习题"; color: "#ffffff"; font.pixelSize: 18; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+        visible: uiState === "TRAINING" && (backend.currentSubject === "科目二" || backend.currentSubject === "科目三")
+        background: Rectangle { color: "#238636"; radius: 8 }
+        contentItem: Text {
+            text: "预约瑕疵练习时间"
+            color: "#ffffff"
+            font.pixelSize: 16
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            wrapMode: Text.WordWrap
+        }
         onClicked: {
-            theoryEngine.reset()
-            var file = ""
-            if (backend.currentSubject === "科目一")
-                file = "questions_1.json"
-            else if (backend.currentSubject === "科目四")
-                file = "questions_4.json"
-            // else
-            //     file = "questions_1.json"
-
-            var ok = theoryEngine.loadQuestions(file)
-            if (theoryEngine.totalQuestions === 0) {
-                if (!ok) {
-                    welcomeMsg.text = "无法加载题库，请检查题库文件"
-                    return
-                }
-            }
-                quizDialog.visible = true
-            }
+            appointmentField.text = defaultAppointmentDateTime()
+            appointmentDialog.visible = true
+        }
     }
 
     // 4 底部状态栏
@@ -462,9 +530,14 @@ Window {
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: 12
                         }
-                        background: Rectangle { color: "#161B22"; radius: 6; border.color: "#2F363D" }
+                        background: Rectangle {
+                            radius: 6
+                            color: quizShowAnswers ? (index === theoryEngine.currentCorrect ? "#238636" : "#161B22") : "#161B22"
+                            border.color: (quizShowAnswers && index === theoryEngine.currentCorrect) ? "#2F8F2F" : "#2F363D"
+                        }
                         onClicked: {
-                            theoryEngine.submitAnswer(index)
+                            if (!quizShowAnswers)
+                                theoryEngine.submitAnswer(index)
                         }
                     }
                 }
@@ -475,13 +548,113 @@ Window {
             Row {
                 spacing: 10
                 anchors.horizontalCenter: parent.horizontalCenter
-                Button { text: "重置"; onClicked: { theoryEngine.reset(); } }
+                // 背题模式下显示翻页与退出
+                Loader {
+                    active: quizShowAnswers
+                    sourceComponent: Component {
+                        Row {
+                            spacing: 10
+                            Button { text: "上一题"; onClicked: theoryEngine.prevQuestion(); }
+                            Button { text: "下一题"; onClicked: theoryEngine.nextQuestion(); }
+                            Button { text: "退出"; onClicked: quizDialog.visible = false; }
+                        }
+                    }
+                }
+                Loader {
+                    active: !quizShowAnswers
+                    sourceComponent: Component {
+                        Row {
+                            spacing: 10
+                            Button { text: "重置"; onClicked: { theoryEngine.reset(); } }
+                            Button {
+                                text: "提交并退出"
+                                onClicked: {
+                                    var result = theoryEngine.getResult()
+                                    backend.uploadTheoryResult(result)
+                                    quizDialog.visible = false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 预约瑕疵练习时间弹窗
+    Rectangle {
+        id: appointmentDialog
+        width: 520
+        height: 220
+        color: "#0B1220"
+        radius: 10
+        border.color: "#30363D"
+        border.width: 2
+        anchors.centerIn: parent
+        visible: false
+        z: 999
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 16
+
+            Label {
+                text: "预约瑕疵练习时间"
+                font.pixelSize: 20
+                color: "#FFFFFF"
+            }
+            Label {
+                text: "请选择或填写练习时间（格式 yyyy-MM-dd HH:mm）"
+                font.pixelSize: 14
+                color: "#8B949E"
+                wrapMode: Text.WordWrap
+                width: parent.width
+            }
+            TextField {
+                id: appointmentField
+                width: parent.width
+                placeholderText: "例如 2026-04-07 09:00"
+                color: "#E6EDF3"
+                selectByMouse: true
+                background: Rectangle {
+                    color: "#161B22"
+                    radius: 6
+                    border.color: "#30363D"
+                }
+            }
+            Row {
+                spacing: 12
+                anchors.horizontalCenter: parent.horizontalCenter
                 Button {
-                    text: "提交并退出"
+                    text: "取消"
+                    contentItem: Text {
+                        text: parent.text
+                        color: "#FFFFFF"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle { color: "#30363D"; radius: 4 }
+                    onClicked: appointmentDialog.visible = false
+                }
+                Button {
+                    text: "提交预约"
+                    contentItem: Text {
+                        text: parent.text
+                        color: "#FFFFFF"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle { color: "#238636"; radius: 4 }
                     onClicked: {
-                        var result = theoryEngine.getResult()
-                        backend.uploadTheoryResult(result)
-                        quizDialog.visible = false
+                        var s = appointmentField.text.trim()
+                        if (s.length === 0) {
+                            welcomeMsg.text = "请填写预约时间"
+                            return
+                        }
+                        backend.sendAppointment(s)
+                        appointmentDialog.visible = false
+                        welcomeMsg.text = "已提交瑕疵练习预约，时间: " + s
                     }
                 }
             }
@@ -499,6 +672,7 @@ Window {
                 theoryEngine.loadQuestions("questions_1.json")
             else if (subject === "科目四")
                 theoryEngine.loadQuestions("questions_4.json")
+            // 科目二/三不预载理论题库
             // 切换状态，显示原有的“等待刷卡”界面
             uiState = "WAITING_SCAN"
         }

@@ -10,6 +10,7 @@ class DeviceBackend : public QObject{
     Q_OBJECT
     // 只读属性 QML 启动时自动读
     Q_PROPERTY(QString deviceId READ deviceId CONSTANT);
+    Q_PROPERTY(QString currentSubject READ currentSubject NOTIFY currentSubjectChanged)
 public:
     explicit DeviceBackend(QObject *parent = nullptr);
     Q_INVOKABLE void startHardwareThread(); // QML 启动线程
@@ -17,7 +18,7 @@ public:
     Q_INVOKABLE void setOverlayMode(bool active); // QML 通知覆盖层（选择科目）状态
     Q_INVOKABLE void sendAppointment(QString dateStr); // 预约发送
 
-    Q_INVOKABLE void setCurrentSubject(QString sub) { d_currentSubject = sub; } // QML 切换科目
+    Q_INVOKABLE void setCurrentSubject(QString sub); // QML 切换科目
     Q_INVOKABLE QString currentSubject() { return d_currentSubject; } // QML 获取当前科目
     Q_INVOKABLE void uploadTheoryResult(const QJsonObject &result); // 上传分数
     
@@ -28,6 +29,7 @@ public:
 
 signals:
     void networkChanged(bool isOnline);
+    void currentSubjectChanged(const QString &subject);
     /// 已读到卡片并即将发往服务端，供 QML 立即进入「识别中」降低 perceived latency
     void cardProcessingStarted(QString scanAction);
     void showCardInfo(QString cardId, QString name, QString action, int duration);
