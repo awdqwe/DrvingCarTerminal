@@ -337,7 +337,7 @@ Window {
                     if(uiState === "TRAINING") return "正在记录您的学时..."
                     if(uiState === "RESULT") return "练车结束，本次有效练习时长:\n" + lastDuration
                     if(uiState === "WARNING") return "非法拦截：非本车学员或未注册卡片！"
-                    return "未知状态"
+                    return "" // 其他状态显示空
                 }
                 font.pixelSize: uiState === "RESULT" ? 28 : 20
                 color: uiState === "RESULT" ? "#3FB950" : "#8B949E"
@@ -407,7 +407,7 @@ Window {
         }
     }
 
-    // 科目二/三：练车中预约瑕疵练习时间（不发理论题）
+    // 科目二/三：练车中预约下次练习时间（不发理论题）
     Button {
         anchors.right: parent.right
         anchors.bottom: bottomBar.top
@@ -417,7 +417,7 @@ Window {
         visible: uiState === "TRAINING" && (backend.currentSubject === "科目二" || backend.currentSubject === "科目三")
         background: Rectangle { color: "#238636"; radius: 8 }
         contentItem: Text {
-            text: "预约瑕疵练习时间"
+            text: "预约下次练习时间"
             color: "#ffffff"
             font.pixelSize: 16
             font.bold: true
@@ -581,7 +581,7 @@ Window {
         }
     }
 
-    // 预约瑕疵练习时间弹窗
+    // 预约下次练习时间弹窗
     Rectangle {
         id: appointmentDialog
         width: 520
@@ -600,7 +600,7 @@ Window {
             spacing: 16
 
             Label {
-                text: "预约瑕疵练习时间"
+                text: "预约下次练习时间"
                 font.pixelSize: 20
                 color: "#FFFFFF"
             }
@@ -654,7 +654,7 @@ Window {
                         }
                         backend.sendAppointment(s)
                         appointmentDialog.visible = false
-                        welcomeMsg.text = "已提交瑕疵练习预约，时间: " + s
+                        welcomeMsg.text = "已提交下次练习预约，时间: " + s
                     }
                 }
             }
