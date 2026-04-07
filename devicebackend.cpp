@@ -7,7 +7,7 @@
 // salt 盐值
 static QString secretKey = "HelloWorldDrivingSchool@2026_Pi4B";
 
-// 生成 sign
+// 构造签名原文(构造方法必须与服务端一致)
 static QString makeSign(const QString &cardId, 
                         const QString &type, 
                         const QString &timestamp,
@@ -112,14 +112,11 @@ void DeviceBackend::onCardScanned(const QString cardId, const QString action, in
      else d_lastCardId = cardId; // 缓存
     
     // 安全机制
-    // 1)获取当前时间戳
+    // 获取当前时间戳
     qint64 currentTimestamp = QDateTime::currentSecsSinceEpoch();
     QString timestampStr = QString::number(currentTimestamp);
 
-    // 2)生成原始签名 = cardId + Type + Timestamp + salt
-    QString signOrigin = cardId + "card" + QString::number(currentTimestamp) + secretKey;
-
-    // 3)加密签名
+    // 加密签名
     QString sign = makeSign(cardId, "card", timestampStr, d_currentSubject);
 
     QJsonObject obj;
@@ -154,6 +151,7 @@ void DeviceBackend::sendHeartbeat(){
         hb["CardID"] = cardId;
         hb["device_id"] = d_deviceId;
         hb["timestamp"] = timestampStr;
+        hb["Subject"] = d_currentSubject;
         hb["sign"] = sign; 
 
         emit sendToServer(QJsonDocument(hb).toJson(QJsonDocument::Compact) + "\n");
