@@ -1,13 +1,13 @@
 #include "devicebackend.h"
 #include <QFile>
 #include <QTimer>
-#include <QTextStream>
+#include <QTextStream> // 文本流 读取 CPU ID
 #include <QCryptographicHash> // 密码学哈希类
 
 // salt 盐值
-static QString secretKey = "HelloWorldDrivingSchool@2026_Pi4B";
+static QString secretKey = "HelloWorldDrivingSchool@2026_Pi4B"; 
 
-// 构造签名原文(构造方法必须与服务端一致)
+// 构造签名原文(构造方法与服务端一致)
 static QString makeSign(const QString &cardId, 
                         const QString &type, 
                         const QString &timestamp,
@@ -18,16 +18,16 @@ static QString makeSign(const QString &cardId,
 }
 
 DeviceBackend::DeviceBackend(QObject *parent) : QObject(parent){
-    d_deviceId = getCpuId(); // 初始化设备 ID 
+    // 初始化设备 ID
+    d_deviceId = getCpuId(); 
 
     // 初始化心跳定时器
     QTimer *heartTimer = new QTimer(this);
     connect(heartTimer, &QTimer::timeout, this, &DeviceBackend::sendHeartbeat);
-    // 启动心跳定时器，首次触发前延迟 500ms 以保证系统启动流程优先完成
-    heartTimer->start(10000);
+    heartTimer->start(10000); // 启动心跳定时器，每 10 秒发送一次心跳包
     sendHeartbeat(); // 启动时立即发送一次心跳，确保服务端尽快获得设备状态
 
-    // 传入 this 指针
+    // 传入 this 指针 以便底层线程调用获取设备 ID 的函数
     m_rfidThread = new RfidThread(this);
 
     // 连接底层的信号到后端的槽
@@ -46,7 +46,7 @@ void DeviceBackend::startHardwareThread(){ m_rfidThread->start();}
 // 转发给 QML
 void DeviceBackend::onNetworkStatusChanged(bool isOnline){ emit networkChanged(isOnline); }
 void DeviceBackend::onCacheSizeChanged(int size){ emit cacheCountChanged(size); }
-// 发卡注册
+// 发卡注册 
 void DeviceBackend::setIssueMode(bool enable){
     d_issueMode = enable;
     emit issueModeChanged(enable);
@@ -71,7 +71,7 @@ QString DeviceBackend::getCpuId(){
     QFile file("/proc/cpuinfo");
     if(file.open(QIODevice::ReadOnly | QIODevice::Text)){
         QTextStream in(&file);
-        QString l;
+        QString l; // 行数据
         while(in.readLineInto(&l)){
             // 开头字符串对比
             if(l.startsWith("Serial")){
@@ -81,7 +81,6 @@ QString DeviceBackend::getCpuId(){
                 }
             }
         }
-
     }
     return "DEV-offline-mode";
 }
@@ -90,7 +89,7 @@ QString DeviceBackend::getCpuId(){
 void DeviceBackend::onCardScanned(const QString cardId, const QString action, int duration){
     emit cardProcessingStarted(action); // 发信号给 QML 进入「识别中」
 
-    // 发卡注册模式不视为打卡 仅发送卡片信息
+    // 发卡注册模式不视为打卡 仅发送卡号信息
     if (d_issueMode) {
         d_lastCardId = ""; // 清空卡号缓存
         d_lastScanAction.clear(); // 清空最近一发刷卡动作
@@ -108,16 +107,13 @@ void DeviceBackend::onCardScanned(const QString cardId, const QString action, in
 
     d_lastScanAction = action; // 最近一发刷卡动作，用于 invalid 时判断是否回滚底层会话
 
-    if(action == "下车签退") d_lastCardId = ""; // 清空缓存
-     else d_lastCardId = cardId; // 缓存
+    if(action == "下车签退") d_lastCardId = ""; // 清空卡号缓存
+     else d_lastCardId = cardId; // 缓存卡号
     
     // 安全机制
-    // 获取当前时间戳
-    qint64 currentTimestamp = QDateTime::currentSecsSinceEpoch();
-    QString timestampStr = QString::number(currentTimestamp);
-
-    // 加密签名
-    QString sign = makeSign(cardId, "card", timestampStr, d_currentSubject);
+    qint64 currentTimestamp = QDateTime::currentSecsSinceEpoch(); // 获取当前时间戳
+    QString timestampStr = QString::number(currentTimestamp); // 转换为字符串
+    QString sign = makeSign(cardId, "card", timestampStr, d_currentSubject); // 加密签名
 
     QJsonObject obj;
     obj["type"] = "card";
@@ -129,10 +125,8 @@ void DeviceBackend::onCardScanned(const QString cardId, const QString action, in
     obj["timestamp"] = timestampStr;
     obj["sign"] = sign;
 
-    QJsonDocument doc(obj);
-
-    // 最终 JSON
-    QString json = doc.toJson(QJsonDocument::Compact) + "\n";
+    QJsonDocument doc(obj); // 转换为 JSON
+    QString json = doc.toJson(QJsonDocument::Compact) + "\n"; // 添加换行符
     emit sendToServer(json);
 }
 
@@ -143,7 +137,7 @@ void DeviceBackend::sendHeartbeat(){
 
         qint64 currentTimestamp = QDateTime::currentSecsSinceEpoch();
         QString timestampStr = QString::number(currentTimestamp);
-        QString cardId = d_lastCardId.isEmpty() ? "" : d_lastCardId;
+        QString cardId = d_lastCardId.isEmpty() ? "" : d_lastCardId; // 获取最近一次刷卡的卡号
         QString sign = makeSign(cardId, "heartbeat", timestampStr, d_currentSubject);
         
         QJsonObject hb;
@@ -154,13 +148,56 @@ void DeviceBackend::sendHeartbeat(){
         hb["Subject"] = d_currentSubject;
         hb["sign"] = sign; 
 
-        emit sendToServer(QJsonDocument(hb).toJson(QJsonDocument::Compact) + "\n");
+        QString json = QJsonDocument(hb).toJson(QJsonDocument::Compact) + "\n";
+        emit sendToServer(json);
     }
+}
+
+// 发送理论成绩消息
+void DeviceBackend::uploadTheoryResult(const QJsonObject &result){
+    QJsonObject obj = result;
+    qint64 currentTimestamp = QDateTime::currentSecsSinceEpoch();
+    QString timestampStr = QString::number(currentTimestamp);
+
+    if (!obj.contains("CardID")) {
+        obj["CardID"] = d_lastCardId; // 在刷卡时保存
+    }
+    if (!obj.contains("type")) {
+        obj["type"] = "theory";
+    }
+    QString sign = makeSign(obj["CardID"].toString(), obj["type"].toString(), timestampStr, d_currentSubject);
+
+    obj["device_id"] = d_deviceId;
+    obj["timestamp"] = timestampStr;
+    obj["sign"] = sign;
+    
+    QJsonDocument doc(obj);
+
+    QString json = doc.toJson(QJsonDocument::Compact) + "\n";
+    emit sendToServer(json);
+}
+
+// 发送预约消息
+void DeviceBackend::sendAppointment(QString dateStr) {
+    qint64 currentTimestamp = QDateTime::currentSecsSinceEpoch();
+    QString timestampStr = QString::number(currentTimestamp);
+    QString sign = makeSign(d_lastCardId, "appointment", timestampStr, d_currentSubject);
+
+    QJsonObject obj;
+    obj["type"] = "appointment";
+    obj["CardID"] = d_lastCardId;
+    obj["Subject"] = d_currentSubject;
+    obj["Date"] = dateStr;
+    obj["device_id"] = d_deviceId;
+    obj["timestamp"] = timestampStr;
+    obj["sign"] = sign;
+
+    emit sendToServer(QJsonDocument(obj).toJson(QJsonDocument::Compact) + "\n");
 }
 
 // 解析服务端回应包(得到卡的基本信息并显示到UI)
 void DeviceBackend::onServerAckReceived(const QString &jsonReply){
-    QJsonDocument doc = QJsonDocument::fromJson(jsonReply.toUtf8());
+    QJsonDocument doc = QJsonDocument::fromJson(jsonReply.toUtf8()); // 解析 JSON
     if (doc.isObject()) {
         QJsonObject ackObj = doc.object();
         QString type = ackObj.value("type").toString();
@@ -214,47 +251,4 @@ void DeviceBackend::onServerAckReceived(const QString &jsonReply){
             }
         }
     }
-}
-
-// 发送理论成绩消息
-void DeviceBackend::uploadTheoryResult(const QJsonObject &result){
-    QJsonObject obj = result;
-    qint64 currentTimestamp = QDateTime::currentSecsSinceEpoch();
-    QString timestampStr = QString::number(currentTimestamp);
-
-    if (!obj.contains("CardID")) {
-        obj["CardID"] = d_lastCardId; // 在刷卡时保存
-    }
-    if (!obj.contains("type")) {
-        obj["type"] = "theory";
-    }
-    QString sign = makeSign(obj["CardID"].toString(), obj["type"].toString(), timestampStr, d_currentSubject);
-
-    obj["device_id"] = d_deviceId;
-    obj["timestamp"] = timestampStr;
-    obj["sign"] = sign;
-    
-    QJsonDocument doc(obj);
-
-    // 最终 JSON
-    QString json = doc.toJson(QJsonDocument::Compact) + "\n";
-    emit sendToServer(json);
-}
-
-// 发送预约消息
-void DeviceBackend::sendAppointment(QString dateStr) {
-    qint64 currentTimestamp = QDateTime::currentSecsSinceEpoch();
-    QString timestampStr = QString::number(currentTimestamp);
-    QString sign = makeSign(d_lastCardId, "appointment", timestampStr, d_currentSubject);
-
-    QJsonObject obj;
-    obj["type"] = "appointment";
-    obj["CardID"] = d_lastCardId;
-    obj["Subject"] = d_currentSubject;
-    obj["Date"] = dateStr;
-    obj["device_id"] = d_deviceId;
-    obj["timestamp"] = timestampStr;
-    obj["sign"] = sign;
-
-    emit sendToServer(QJsonDocument(obj).toJson(QJsonDocument::Compact) + "\n");
 }

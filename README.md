@@ -11,6 +11,24 @@
 - 支持发卡注册模式、科目选择与理论练习答题模块
 - 使用 Qt (QML) 实现 UI，C++ 负责硬件与网络逻辑
 
+## 准备工作
+
+安装 bcm2835 库
+- 开启树莓派的 SPI 通信接口
+- 下载 C++ 硬件驱动库 (bcm2835)
+    wget http://www.airspayce.com/mikem/bcm2835/bcm2835-1.73.tar.gz
+            tar zxvf bcm2835-1.73.tar.gz
+            cd bcm2835-1.73
+            ./configure
+            make
+            sudo make check
+            sudo make install
+- 安装QT5环境
+  sudo apt update
+  sudo apt install qtbase5-dev qt5-qmake qtbase5-dev-tools -y
+  sudo apt install qtdeclarative5-dev
+  sudo apt install qml-module-qtquick-controls2
+
 ## 通信协议 (示例)
 
 1) 正常刷卡（上车签到）
@@ -130,7 +148,7 @@ sudo ./GUI_CLIENT_G  # 或生成的可执行文件名
 如需把 `server_ip` 与 `port` 改为配置文件或命令行参数，可以继续实现并更新构建说明。
 
 
-
+## 工程结构
 GUI_CLIENT
 C:.
 │  devicebackend.cpp

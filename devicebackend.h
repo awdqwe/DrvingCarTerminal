@@ -44,7 +44,7 @@ private slots:
     void onServerAckReceived(const QString &jsonReply);
     void onCacheSizeChanged(int size);
     void onCardScanned(const QString cardId, const QString action, int duration);
-    void sendHeartbeat(); // 定时发送心跳包
+    void sendHeartbeat(); // 发送心跳包
 
 private:
     RfidThread *m_rfidThread;
@@ -54,9 +54,8 @@ private:
     QString d_currentStudentName;
     QString d_currentSubject = "";
 
-    // 发卡注册模式
     bool d_issueMode = false;
-    bool d_overlayMode = false;
+    bool d_overlayMode = false; // 覆盖层（选择科目）状态
 
 };
 

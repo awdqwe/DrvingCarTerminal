@@ -17,10 +17,10 @@ Window {
     // 状态机变量  // IDLE(空闲), TRAINING(练车中), RESULT(结算中), WARNING(临时警告)
     property string uiState:"IDLE"
     property int sessionSeconds: 0  // 练车秒数
-    property string lastDuration: "00:00:00"
-    property string currentStudent: "等待刷卡"  // 练车秒数
+    property string lastDuration: "00:00:00" // 临时记录时长
+    property string currentStudent: "等待刷卡"  // 当前学员
     // 练车中刷错卡显示 illegal 后，警告结束需回到 TRAINING
-    property bool resumeTrainingAfterWarning: false
+    property bool resumeTrainingAfterWarning: false // 临时记录是否在练车中
     // 进入「识别中」前是否在练车（含连续刷卡时仍处于 RECOGNIZING 的情况）
     property bool pendingResumeTraining: false
     property int recognizingStartTime: 0
@@ -31,7 +31,12 @@ Window {
     property int _pendDuration: 0
     property bool quizShowAnswers: false
 
-    readonly property int recognizingMinMs: 900 // 约 1 秒内展示「识别中区」以降低卡顿感
+    readonly property int recognizingMinMs: 900 // 显示过度动画 约 1 秒
+
+    // 定义终端发布年份
+    property int terminalYear: 2025
+    // 将弹窗内部的 appointmentField 暴露为顶层别名（见 appointmentDialog）
+    property alias appointmentField: appointmentDialog.field
 
     // 工具函数 秒数转换
     function formatTime(sec) {
@@ -161,6 +166,7 @@ Window {
         repeat: true
         onTriggered: sessionSeconds++
     }
+
     // 定时器 警告回弹
     Timer {
         id: warningTimer
@@ -201,7 +207,6 @@ Window {
         onTriggered: uiState = "IDLE"
     }
     // -------- UI 布局 -----------------------------------------------------------
-
     // 1 顶部状态栏
     Rectangle {
         id: topBar
@@ -594,35 +599,191 @@ Window {
         visible: false
         z: 999
 
+        // 对外暴露内部 TextField 便于顶层直接访问
+        property alias field: appointmentField
+
+        // 内部日期数据
+        property int selYear: new Date().getFullYear()
+        property int selMonth: new Date().getMonth() + 1
+        property int selDay: new Date().getDate()
+        property int selHour: new Date().getHours()
+        property int selMinute: new Date().getMinutes()
+
+        // 更新 TextField 内容
+        function updateTextFieldsDisplay() {
+            var y = appointmentDialog.selYear
+            var m = appointmentDialog.selMonth < 10 ? "0" + appointmentDialog.selMonth : appointmentDialog.selMonth
+            var d = appointmentDialog.selDay < 10 ? "0" + appointmentDialog.selDay : appointmentDialog.selDay
+            var h = appointmentDialog.selHour < 10 ? "0" + appointmentDialog.selHour : appointmentDialog.selHour
+            var min = appointmentDialog.selMinute < 10 ? "0" + appointmentDialog.selMinute : appointmentDialog.selMinute
+            appointmentField.text = y + "-" + m + "-" + d + " " + h + ":" + min
+        }
+
+        // 动态决定月天数
+        function daysInMonth(y, m) {
+            var days = new Date(y, m, 0) // 获取指定年月的月份天数
+            return days.getDate()
+        }
+
+        // 初始化预约时间框
+        Component.onCompleted: {
+            var d = new Date()
+            d.setDate(d.getDate() + 1) // 默认预约时期 明天
+            d.setHours(9,0,0,0) // 默认预约时间 9:00
+            appointmentDialog.selYear = d.getFullYear()
+            appointmentDialog.selMonth = d.getMonth() + 1
+            appointmentDialog.selDay = d.getDate()
+            appointmentDialog.selHour = 9
+            appointmentDialog.selMinute = 0
+            appointmentDialog.updateTextFieldsDisplay()
+
+            // 同步滚轮索引
+            yearTumbler.currentIndex = selYear - terminalYear // 年份范围
+            monthTumbler.currentIndex = selMonth - 1
+            dayTumbler.model = appointmentDialog.daysInMonth(selYear, selMonth)
+            dayTumbler.currentIndex = selDay - 1
+            hourTumbler.currentIndex = selHour
+            minuteTumbler.currentIndex = selMinute
+        }
+
         Column {
             anchors.fill: parent
             anchors.margins: 20
             spacing: 16
-
             Label {
                 text: "预约下次练习时间"
                 font.pixelSize: 20
                 color: "#FFFFFF"
             }
             Label {
-                text: "请选择或填写练习时间（格式 yyyy-MM-dd HH:mm）"
+                text: "请选择练习时间"
                 font.pixelSize: 14
                 color: "#8B949E"
                 wrapMode: Text.WordWrap
                 width: parent.width
             }
+            // 滚动选择器 年
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 12
+                // 年份选择
+                Tumbler {
+                    id: yearTumbler
+                    width: 70
+                    height: 120
+                    model: 7 // 7年
+                    delegate: Text {
+                        text: (modelData + terminalYear)
+                        font.pixelSize: 20 // 字体大小 20
+                        color: "#E6EDF3"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    // 年份改变时更新日期显示和天数限制
+                    onCurrentIndexChanged: {
+                        appointmentDialog.selYear = currentIndex + terminalYear
+                        var maxDay = appointmentDialog.daysInMonth(appointmentDialog.selYear, appointmentDialog.selMonth)
+                        dayTumbler.model = maxDay
+                        if (dayTumbler.currentIndex >= maxDay)
+                            dayTumbler.currentIndex = maxDay - 1
+                        appointmentDialog.selDay = dayTumbler.currentIndex + 1
+                        appointmentDialog.updateTextFieldsDisplay()
+                    }
+                }
+
+                // 滚动选择器 月
+                Tumbler {
+                    id: monthTumbler
+                    width: 70
+                    height: 120
+                    model: 12
+                    delegate: Text {
+                        text: (modelData + 1) + "月"
+                        font.pixelSize: 20 // 字体大小 20
+                        color: "#E6EDF3"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onCurrentIndexChanged: {
+                        appointmentDialog.selMonth = currentIndex + 1
+                        var maxDay = appointmentDialog.daysInMonth(appointmentDialog.selYear, appointmentDialog.selMonth)
+                        dayTumbler.model = maxDay
+                        if (dayTumbler.currentIndex >= maxDay)
+                            dayTumbler.currentIndex = maxDay - 1
+                        appointmentDialog.selDay = dayTumbler.currentIndex + 1
+                        appointmentDialog.updateTextFieldsDisplay()
+                    }
+                }
+
+                // 滚动选择器 日
+                Tumbler { 
+                    id: dayTumbler
+                    width: 70
+                    height: 120
+                    delegate: Text {
+                        text: modelData + 1 + "日"
+                        font.pixelSize: 20 // 字体大小 20
+                        color: "#E6EDF3"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onCurrentIndexChanged: {
+                        appointmentDialog.selDay = currentIndex + 1 // 月份和日期都要加 1，因为索引从 0 开始
+                        appointmentDialog.updateTextFieldsDisplay()
+                    }
+                }
+
+                // 滚动选择器 时
+                Tumbler {
+                    id: hourTumbler
+                    width: 70
+                    height: 120
+                    model: 24
+                    delegate: Text {
+                        text: (modelData < 10 ? "0" + modelData : modelData) + "点"
+                        font.pixelSize: 20 // 字体大小 20
+                        color: "#E6EDF3"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onCurrentIndexChanged: {
+                        appointmentDialog.selHour = currentIndex
+                        appointmentDialog.updateTextFieldsDisplay()
+                    }
+                }
+
+                // 滚动选择器 分
+                Tumbler {
+                    id: minuteTumbler
+                    width: 70
+                    height: 120
+                    model: 60
+                    delegate: Text {
+                        text: (modelData < 10 ? "0" + modelData : modelData) + "分"
+                        font.pixelSize: 20 // 字体大小 20
+                        color: "#E6EDF3"
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    onCurrentIndexChanged: {
+                        appointmentDialog.selMinute = currentIndex
+                        appointmentDialog.updateTextFieldsDisplay()
+                    }
+                }
+            }
+            // 已选时间预览
             TextField {
                 id: appointmentField
                 width: parent.width
-                placeholderText: "例如 2026-04-07 09:00"
                 color: "#E6EDF3"
-                selectByMouse: true
+                font.pixelSize: 20
+                readOnly: true
                 background: Rectangle {
                     color: "#161B22"
                     radius: 6
                     border.color: "#30363D"
                 }
             }
+            // 按钮
             Row {
                 spacing: 12
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -677,4 +838,4 @@ Window {
             uiState = "WAITING_SCAN"
         }
     }
-}
+} // window
