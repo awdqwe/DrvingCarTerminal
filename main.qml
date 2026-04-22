@@ -94,7 +94,7 @@ Window {
             uiState = "WARNING"
             if (!resumeTrainingAfterWarning)
                 currentStudent = "非法卡片" // 练车中刷错卡时保留原学员姓名
-            welcomeMsg.text = "非学员卡或未注册卡片！"
+            welcomeMsg.text = "非当前学员卡或未注册卡片！"
             warningTimer.restart() // 启动UI回弹定时器
         }
     }
@@ -519,7 +519,7 @@ Window {
                 id: optionsBox
                 spacing: 10
                 width: parent.width - 40
-
+                // 选项通过 Repeater 动态生成
                 Repeater {
                     model: theoryEngine.currentOptions
                     delegate: Button {
@@ -675,7 +675,8 @@ Window {
                     delegate: Text {
                         text: (modelData + terminalYear)
                         font.pixelSize: 20 // 字体大小 20
-                        color: "#E6EDF3"
+                        color: PathView.isCurrentItem ? "#79C0FF" : "#E6EDF3"
+                        font.bold: PathView.isCurrentItem
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -700,7 +701,8 @@ Window {
                     delegate: Text {
                         text: (modelData + 1) + "月"
                         font.pixelSize: 20 // 字体大小 20
-                        color: "#E6EDF3"
+                        color: PathView.isCurrentItem ? "#79C0FF" : "#E6EDF3"
+                        font.bold: PathView.isCurrentItem
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -723,7 +725,8 @@ Window {
                     delegate: Text {
                         text: modelData + 1 + "日"
                         font.pixelSize: 20 // 字体大小 20
-                        color: "#E6EDF3"
+                        color: PathView.isCurrentItem ? "#79C0FF" : "#E6EDF3"
+                        font.bold: PathView.isCurrentItem
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -742,7 +745,8 @@ Window {
                     delegate: Text {
                         text: (modelData < 10 ? "0" + modelData : modelData) + "点"
                         font.pixelSize: 20 // 字体大小 20
-                        color: "#E6EDF3"
+                        color: PathView.isCurrentItem ? "#79C0FF" : "#E6EDF3"
+                        font.bold: PathView.isCurrentItem
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -761,7 +765,8 @@ Window {
                     delegate: Text {
                         text: (modelData < 10 ? "0" + modelData : modelData) + "分"
                         font.pixelSize: 20 // 字体大小 20
-                        color: "#E6EDF3"
+                        color: PathView.isCurrentItem ? "#79C0FF" : "#E6EDF3"
+                        font.bold: PathView.isCurrentItem
                         horizontalAlignment: Text.AlignHCenter
                     }
                     onCurrentIndexChanged: {

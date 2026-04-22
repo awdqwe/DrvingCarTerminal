@@ -89,6 +89,14 @@ QString DeviceBackend::getCpuId(){
 void DeviceBackend::onCardScanned(const QString cardId, const QString action, int duration){
     emit cardProcessingStarted(action); // 发信号给 QML 进入「识别中」
 
+    // 如果底层线程已本地判断为非法拦截，直接本地处理并通知 QML，避免等待服务端回包
+    if (action == QStringLiteral("非法拦截")) {
+        d_lastCardId = ""; // 不缓存非法卡
+        d_lastScanAction.clear();
+        emit showCardInfo("", QStringLiteral("未知访客"), QStringLiteral("illegal"), 0);
+        return;
+    }
+
     // 发卡注册模式不视为打卡 仅发送卡号信息
     if (d_issueMode) {
         d_lastCardId = ""; // 清空卡号缓存
