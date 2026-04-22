@@ -483,11 +483,11 @@ Window {
 
             Row {
                 spacing: 10
-                Label { text: "练习答题"; font.pixelSize: 22; color: "#FFFFFF" }
+                Label { text: quizShowAnswers ? "背题" : "模拟考试"; font.pixelSize: 22; color: "#FFFFFF" }
                 Item { Layout.fillWidth: true }
                 Label { text: (theoryEngine.currentIndex < theoryEngine.totalQuestions ? (theoryEngine.currentIndex+1) : theoryEngine.totalQuestions) + "/" + theoryEngine.totalQuestions; color: "#8B949E" }
                 Button {
-                    text: "关闭"
+                    text: "直接关闭"
                     contentItem: Text {
                         text: parent.text
                         color: "#FFFFFF"
@@ -662,7 +662,7 @@ Window {
                 wrapMode: Text.WordWrap
                 width: parent.width
             }
-            // 滚动选择器 年
+            // 滚动选择器
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: 12
