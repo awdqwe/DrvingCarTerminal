@@ -1,6 +1,7 @@
 #include "rfidthread.h"
 #include "MFRC522.h"
 #include <QDateTime>
+#include <QMutexLocker>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -17,8 +18,7 @@ void RfidThread::run() {
     MFRC522 mfrc;
     mfrc.PCD_Init();
 
-    const string server_ip = "10.129.101.194"; // 服务器(电脑端) IP
-    int port = 8888;
+    // 使用类成员 r_serverIp / r_serverPort（可在运行时由 setServerAddress 修改）
 
     // while (1) {
     while(!isInterruptionRequested()){
@@ -28,9 +28,17 @@ void RfidThread::run() {
             r_sock = socket(AF_INET, SOCK_STREAM, 0);
             
             struct sockaddr_in server;
-            server.sin_addr.s_addr = inet_addr(server_ip.c_str());
+            // 复制当前配置，避免长时间持有锁
+            QString ipCopy;
+            int portCopy;
+            {
+                QMutexLocker locker(&r_netMutex);
+                ipCopy = r_serverIp;
+                portCopy = r_serverPort;
+            }
+            server.sin_addr.s_addr = inet_addr(ipCopy.toStdString().c_str());
             server.sin_family = AF_INET;
-            server.sin_port = htons(port);
+            server.sin_port = htons(portCopy);
 
             // 连接 PC 端
             if (::connect(r_sock, (struct sockaddr *)&server, sizeof(server)) == 0) {
@@ -157,5 +165,18 @@ void RfidThread::sendJson(const QString &json){
         // 离线缓存
         r_offlineCache.push_back(json);
         emit cacheSizeChanged(r_offlineCache.size());
+    }
+}
+
+void RfidThread::setServerAddress(const QString &ip, int port){
+    QMutexLocker locker(&r_netMutex);
+    r_serverIp = ip;
+    r_serverPort = port;
+    // 强制重连：如果当前已连接则关闭 socket，让主循环重新建立连接到新地址
+    if (r_isConnected && r_sock != -1) {
+        close(r_sock);
+        r_sock = -1;
+        r_isConnected = false;
+        emit networkStatusChanged(false);
     }
 }

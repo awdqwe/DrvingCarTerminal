@@ -242,6 +242,12 @@ Window {
                 contentItem: Text { text: parent.text; color: "#FFFFFF" }
                 onClicked: uiState = "IDLE"
             }
+            Button {
+                text: "服务端设置"
+                background: Rectangle { color: "#30363D"; radius: 6 }
+                contentItem: Text { text: parent.text; color: "#FFFFFF" }
+                onClicked: serverDialog.visible = true
+            }
         }
     }
 
@@ -459,6 +465,60 @@ Window {
                 text: "当前离线待补发数据: 0 条" 
                 font.pixelSize: 15
                 color: "#FFCA28"
+            }
+        }
+    }
+
+    // 服务端设置对话框
+    Rectangle {
+        id: serverDialog
+        width: 420
+        height: 180
+        color: "#0B1220"
+        radius: 8
+        border.color: "#30363D"
+        border.width: 2
+        anchors.centerIn: parent
+        visible: false
+        z: 1000
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 8
+
+            Label { text: "设置服务端地址"; font.pixelSize: 18; color: "#FFFFFF" }
+
+            Row {
+                spacing: 8
+                Label { text: "IP:"; color: "#8B949E" }
+                TextField { id: ipField; text: "10.129.101.194"; width: 220 }
+                Label { text: "端口:"; color: "#8B949E" }
+                TextField { id: portField; text: "8888"; width: 80 }
+            }
+
+            Item { Layout.fillHeight: true }
+
+            Row {
+                spacing: 10
+                anchors.horizontalCenter: parent.horizontalCenter
+                Button {
+                    text: "取消"
+                    onClicked: serverDialog.visible = false
+                    background: Rectangle { color: "#6E7681"; radius: 6 }
+                    contentItem: Text { text: parent.text; color: "#FFFFFF" }
+                }
+                Button {
+                    text: "保存并应用"
+                    onClicked: {
+                        var p = parseInt(portField.text)
+                        if (isNaN(p)) p = 8888
+                        backend.setServerAddress(ipField.text, p)
+                        serverDialog.visible = false
+                    }
+                    background: Rectangle { color: "#238636"; radius: 6 }
+                    contentItem: Text { text: parent.text; color: "#FFFFFF" }
+                }
             }
         }
     }

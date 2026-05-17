@@ -161,6 +161,13 @@ void DeviceBackend::sendHeartbeat(){
     }
 }
 
+// 设置服务端的地址
+void DeviceBackend::setServerAddress(const QString &ip, int port){
+    if (m_rfidThread) {
+        m_rfidThread->setServerAddress(ip, port);
+    }
+}
+
 // 发送理论成绩消息
 void DeviceBackend::uploadTheoryResult(const QJsonObject &result){
     QJsonObject obj = result;

@@ -3,6 +3,7 @@
 
 #include <QThread>
 #include <QMutex>
+#include <QString>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <vector>
@@ -38,8 +39,14 @@ private:
     bool r_issueMode = false; // 发卡注册模式
     bool r_overlayActive = false; // 选择科目 overlay 活跃时忽略刷卡
 
+    // 可配置的服务器地址（支持运行时修改）
+    QString r_serverIp = QStringLiteral("10.129.101.194");
+    int r_serverPort = 8888;
+    QMutex r_netMutex; // 保护网络相关配置的互斥量
+
 public slots:
     void sendJson(const QString &json);
+    void setServerAddress(const QString &ip, int port);
     void invalidatePendingSession(); // 失效当前的会话
     void setIssueMode(bool enable);
     void setOverlayMode(bool active);

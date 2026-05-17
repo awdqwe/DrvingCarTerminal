@@ -21,6 +21,7 @@ public:
     Q_INVOKABLE void setCurrentSubject(QString sub); // QML 切换科目
     Q_INVOKABLE QString currentSubject() { return d_currentSubject; } // QML 获取当前科目
     Q_INVOKABLE void uploadTheoryResult(const QJsonObject &result); // 上传分数
+    Q_INVOKABLE void setServerAddress(const QString &ip, int port); // 设置服务端地址
     
 
     // 工具函数 读设备 ID
